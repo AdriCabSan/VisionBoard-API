@@ -1,5 +1,4 @@
 from trello import TrelloClient
-#import tensorflow as tf
 import datetime
 import pytz
 import numpy as np
@@ -50,6 +49,7 @@ def showing_recommendations(all_boards, index_board, experience_columns, filter_
             cards = column.list_cards()
             for card in cards:
                 points = get_points_of_a_card(card.name, '[', ']')
+                points = 1
                 for label in card._labels:
                     for id_member in card.idMembers:
                         if dict.get(label.name):
@@ -212,14 +212,13 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, e
     for key in dict:
         X.append(key)
         Y.append(dict[key])
-        print('key = ' + str(key) + ' value = ' + str(dict[key]))
     if len(dict) > 1:
         X = np.array([np.ones(len(X)), X]).T
         B = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(Y)
         predicted_performance = B[0] + B[1] * (len(dict) + 1)
         remaining_points = predicted_performance * remaining_days / 10
         ret = remaining_points
-        print('points que puedo hacer hasta el final del sprint = ' + str(remaining_points))
+        print('points that i could do during this sprint = ' + str(remaining_points))
     elif len(dict) == 1:
         ret = Y[0]
         ret *= remaining_days
@@ -230,16 +229,16 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, e
     return ret
 
 
-#def rdebug(all_boards, index_board, member_name):
-#    my_board = all_boards[index_board]
-#    a = my_board.get_members()
-#    print(a)
-#    for member in a:
-#        f = open("jiji.txt", 'a+')
-#        f.write(member.full_name)
-#        f.write(member.id)
-#        print(member.full_name)
-#        print(member.id)
+def rdebug(all_boards, index_board):
+    my_board = all_boards[index_board]
+    a = my_board.get_members()
+    print(a)
+    for member in a:
+        f = open("jiji.txt", 'a+')
+        f.write(str(member.full_name + '\n'))
+        f.write(str(member.id + '\n'))
+        print(member.full_name)
+        print(member.id)
 
 
 
@@ -251,6 +250,8 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, e
 #recommend_a_card_for_a_member(client.list_boards(), 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'], get_memberid('Arturo Hinojosa Reyes'), sprint_limit)
 
 #respect_column_rules(client.list_boards(), 0)
+
+#rdebug(client.list_boards(), 0)
 
 
 
