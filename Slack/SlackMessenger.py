@@ -1,6 +1,7 @@
+import enviroments
 class SlackMessenger:
-    bot_token = 'xoxb-685233796401-693744259798-OtXlb1bChcEo98YSx6fiFhbL'
-    user_token= 'xoxp-685233796401-691580016560-680179250178-75c9bd71f7c4b2aec022e67fcbcad359'
+    bot_token = enviroments.slack_bot_token
+    user_token= enviroments.slack_user_token
     
     slack = None
     

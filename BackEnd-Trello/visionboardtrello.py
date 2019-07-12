@@ -3,12 +3,12 @@ import datetime
 import pytz
 import numpy as np
 import json
-
+import enviroments
 
 client = TrelloClient(
-    api_key='65e3c96c34e8543f5f79ddad3a591742',
-    api_secret='36b872e6d755ff2b3d37293e9dcacb467c8db1ee8b560d358be75001068c5274',
-    token='084ab842600d494065dfe16562374d9c27dd465ccb91133560a07189f2c8d021',
+    api_key=enviroments.trello_key,
+    api_secret=enviroments.trello_api_secret,
+    token=enviroments.trello_token
 )
 
 
