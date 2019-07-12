@@ -12,7 +12,7 @@ client = TrelloClient(
 )
 
 
-class board:
+class VisionTrello:
     def __init__(self, all_boards,
                  index_board,
                  member_fullname = '',
@@ -270,7 +270,7 @@ def rdebug(board):
         print(member.id)
 
 
-working_board = board(all_boards = client.list_boards(),
+working_board = VisionTrello(all_boards = client.list_boards(),
                       index_board = 0,
                       filter_columns = ['Sprint Backlog'],
                       limit = 7)
