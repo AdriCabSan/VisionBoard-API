@@ -1,7 +1,6 @@
-import enviroments
 class SlackMessenger:
-    bot_token = enviroments.slack_bot_token
-    user_token= enviroments.slack_user_token
+    bot_token = 'xoxb-685233796401-693744259798-OtXlb1bChcEo98YSx6fiFhbL'
+    user_token= 'xoxp-685233796401-691580016560-680179250178-75c9bd71f7c4b2aec022e67fcbcad359'
     
     slack = None
     
@@ -28,7 +27,8 @@ class SlackMessenger:
 
     def get_users_id (self):
         l = self.slack.users.list()
-        return [{i['name']:i['id']} for i in l.body['members']]
+        for i in l.body['members']:
+            self.user_names[i['id']] = i['name']
 
     def send_direct_message(self,user_id,message):
         private_channel_id = self.slack.im.open(user=user_id).body['channel']['id']
