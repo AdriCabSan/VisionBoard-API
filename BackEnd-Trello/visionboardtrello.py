@@ -26,21 +26,22 @@ def card_not_taken(all_boards, index_board, filter_columns, limit):
                     print("Card name: " + card.name)
 
 
-def get_points_of_a_card(card_name):
-    index = card_name.find('[')
+def get_points_of_a_card(card_name, open_character, closed_character):
+    index = card_name.find(open_character)
     card_len = len(card_name)
     ret = 0
     if index != -1:
         index += 1
-        while index < card_len and card_name[index] != ']':
+        while index < card_len and card_name[index] != closed_character:
             ret *= 10
             ret += (ord(card_name[index]) - 48)
             index += 1
     return ret
 
 
+
 #This will show you the percentage of recommendation for each person in the board to make some cards based on their experience with the card labels that they did
-def recommend_a_card(all_boards, index_board, experience_columns, filter_columns):
+def showing_recommendations(all_boards, index_board, experience_columns, filter_columns):
     my_board = all_boards[index_board]
     dict = {}
     all_columns = my_board.list_lists()
@@ -48,8 +49,7 @@ def recommend_a_card(all_boards, index_board, experience_columns, filter_columns
         if column.name in experience_columns:
             cards = column.list_cards()
             for card in cards:
-                points = get_points_of_a_card(card.name)
-                #print('This cards has ' + str(points) + ' points with the name : ' + card.name)
+                points = get_points_of_a_card(card.name, '[', ']')
                 for label in card._labels:
                     for id_member in card.idMembers:
                         if dict.get(label.name):
@@ -82,13 +82,69 @@ def recommend_a_card(all_boards, index_board, experience_columns, filter_columns
                 else:
                     print('No one has implement this before :O')
                 print('')
-#    for label in dict:
-#        print('Label : ' + label)
-#        for id_member in dict[label]:
-#            print(client.get_member(id_member).full_name)
 
-def respect_column_rules():
-    print('To do Peer Review{8} receiving the names of the columns with {}')
+#This will show you a recommended card for a given member id within the limit based on your experience working with other card
+def recommend_a_card_for_a_member(all_boards, index_board, experience_columns, filter_columns, member_id, limit):
+    my_board = all_boards[index_board]
+    dict = {}
+    all_columns = my_board.list_lists()
+    max_experience = 0
+    save_card = {}
+    for column in all_columns:
+        if column.name in experience_columns:
+            cards = column.list_cards()
+            for card in cards:
+                points = get_points_of_a_card(card.name, '[', ']')
+                for label in card._labels:
+                    for id_member in card.idMembers:
+                        if dict.get(label.name):
+                            if dict[label.name].get(id_member):
+                                dict[label.name][id_member] += points
+                            else:
+                                dict[label.name][id_member] = points
+                        else:
+                            dict[label.name] = {}
+                            dict[label.name][id_member] = points
+    for column in all_columns:
+        if column.name in filter_columns:
+            cards = column.list_cards()
+            for card in cards:
+                estimated_points = get_points_of_a_card(card.name, '(', ')')
+                if(estimated_points <= limit):
+                    sum_maxi = 0
+                    all_sums = {}
+                    for label in card._labels:
+                        maxi = 0
+                        for id_member in dict[label.name]:
+                            if all_sums.get(id_member):
+                                all_sums[id_member] += dict[label.name][id_member]
+                            else:
+                                all_sums[id_member] = dict[label.name][id_member]
+                            maxi = max(maxi, dict[label.name][id_member])
+                        sum_maxi += maxi
+                    if sum_maxi > 0:
+                        for id_member in all_sums:
+                            if id_member == member_id:
+                                actual_experience = all_sums[id_member] * 100 / sum_maxi
+                                if (max_experience < actual_experience):
+                                    max_experience = actual_experience
+                                    save_card[0] = card
+    if len(save_card) > 0:
+        print('We recommend you this card ' + save_card[0].name + ' url = ' + save_card[0].url + ' your percentage recommendation is about ' + str(max_experience) + ' %')
+    else:
+        print('We have nothing to recommend you :(, please contact with your leader to see what`s next!')
+
+
+def respect_column_rules(all_boards, index_board):
+    my_board = all_boards[index_board]
+    all_columns = my_board.list_lists()
+    for column in all_columns:
+        limit_cards = get_points_of_a_card(column.name, '{', '}')
+        if limit_cards > 0:
+            cards = column.list_cards()
+            number_of_cards_in_column = len(cards)
+            if number_of_cards_in_column > limit_cards:
+                print('You have exceeded the number of cards on the column of ' + column.name + ' you have right now ' + str(number_of_cards_in_column) + ' cards when the limit = ' + str(limit_cards))
 
 
 def show_columns_in_board(all_boards, index_board):
@@ -103,7 +159,7 @@ def get_points_of_column(all_boards, index_board, filter_column):
         if column.name == filter_column:
             cards = column.list_cards()
             for card in cards:
-                ret += get_points_of_a_card(card.name)
+                ret += get_points_of_a_card(card.name, '[', ']')
             break
     return ret
 
@@ -118,7 +174,7 @@ def get_points_of_column_of_member(all_boards, index_board, filter_column, id_me
             for card in cards:
                 for id_members in card.idMembers:
                     if(id_members == id_member):
-                        ret += get_points_of_a_card(card.name)
+                        ret += get_points_of_a_card(card.name, '[', ']')
                         break
             break
     return ret
@@ -131,7 +187,8 @@ def get_memberid(member_name):
         return id_member
 
 
-def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name):
+def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, end_date):
+    ret = 0
     id_member = get_memberid(member_name)
     my_board = all_boards[index_board]
     all_columns = my_board.list_lists()
@@ -151,6 +208,7 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name):
                 dict[sprint_number] = sprint_points
     X = []
     Y = []
+    remaining_days = (end_date.date() - datetime.datetime.today().date()).days
     for key in dict:
         X.append(key)
         Y.append(dict[key])
@@ -158,14 +216,18 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name):
     if len(dict) > 1:
         X = np.array([np.ones(len(X)), X]).T
         B = np.linalg.inv(X.T.dot(X)).dot(X.T).dot(Y)
-        print('Bias = ' + str(B[0]))
-        print('Coefficient = ' + str(B[1]))
         predicted_performance = B[0] + B[1] * (len(dict) + 1)
-        print('Predicted performance = ' + str(predicted_performance))
+        remaining_points = predicted_performance * remaining_days / 10
+        ret = remaining_points
+        print('points que puedo hacer hasta el final del sprint = ' + str(remaining_points))
     elif len(dict) == 1:
+        ret = Y[0]
+        ret *= remaining_days
+        ret /= 10
         print('Just a spring of ' + str(Y[0]) + ' points')
     else:
         print('Nothing to do')
+    return ret
 
 
 #def rdebug(all_boards, index_board, member_name):
@@ -179,14 +241,17 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name):
 #        print(member.full_name)
 #        print(member.id)
 
-def rdebug(all_boards, index_board):
-    print('zzz...')
 
 
 #card_not_taken(client.list_boards(), 0, ['Sprint Backlog'], 7)
-#recommend_a_card(client.list_boards() , 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'])
-#rdebug(client.list_boards(), 0, 'Arturo Hinojosa Reyes')
-predict_sprint_points(client.list_boards(), 0, 'S', 'Arturo Hinojosa Reyes')
+
+#showing_recommendations(client.list_boards() , 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'])
+
+#sprint_limit = predict_sprint_points(client.list_boards(), 0, 'S', 'Arturo Hinojosa Reyes', datetime.datetime(2019, 7, 13))
+#recommend_a_card_for_a_member(client.list_boards(), 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'], get_memberid('Arturo Hinojosa Reyes'), sprint_limit)
+
+#respect_column_rules(client.list_boards(), 0)
+
 
 
 print("Hello ecaresoft!")
