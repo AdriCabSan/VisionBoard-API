@@ -11,16 +11,40 @@ client = TrelloClient(
     token='084ab842600d494065dfe16562374d9c27dd465ccb91133560a07189f2c8d021',
 )
 
+
+class board:
+    def __init__(self, all_boards,
+                 index_board,
+                 member_fullname = '',
+                 member_id = '',
+                 experience_columns = [],
+                 filter_columns = [],
+                 limit = 0,
+                 sprint_prefix = '',
+                 end_date_of_sprint = datetime.datetime(1900, 1, 1).date(),
+                 sprint_limit = 0):
+        self.all_boards = all_boards
+        self.index_board = index_board
+        self.member_fullname = member_fullname
+        self.member_id = member_id
+        self.experience_columns = experience_columns
+        self.filter_columns = filter_columns
+        self.limit = 0
+        self.sprint_prefix = ''
+        self.end_date_of_sprint = end_date_of_sprint
+        self.sprint_limit = sprint_limit
+
+
 #This will give you a set of cards that have not been moved during sometime that you set
-def card_not_taken(all_boards, index_board, filter_columns, limit):
-    my_board = all_boards[index_board]
+def card_not_taken(board):
+    my_board = board.all_boards[board.index_board]
     all_columns = my_board.list_lists()
     for column in all_columns:
-        if column.name in filter_columns:
+        if column.name in board.filter_columns:
             cards = column.list_cards()
             for card in cards:
                 days_elapsed = (pytz.utc.localize(datetime.datetime.utcnow()) - card.dateLastActivity).days
-                if days_elapsed >= limit:
+                if days_elapsed >= board.limit:
                     print("This card has not been moved during the last " + str(days_elapsed) + " days from the column " + column.name + " D:")
                     print("Card name: " + card.name)
 
@@ -38,14 +62,13 @@ def get_points_of_a_card(card_name, open_character, closed_character):
     return ret
 
 
-
 #This will show you the percentage of recommendation for each person in the board to make some cards based on their experience with the card labels that they did
-def showing_recommendations(all_boards, index_board, experience_columns, filter_columns):
-    my_board = all_boards[index_board]
+def showing_recommendations(board):
+    my_board = board.all_boards[board.index_board]
     dict = {}
     all_columns = my_board.list_lists()
     for column in all_columns:
-        if column.name in experience_columns:
+        if column.name in board.experience_columns:
             cards = column.list_cards()
             for card in cards:
                 points = get_points_of_a_card(card.name, '[', ']')
@@ -61,7 +84,7 @@ def showing_recommendations(all_boards, index_board, experience_columns, filter_
                             dict[label.name] = {}
                             dict[label.name][id_member] = points
     for column in all_columns:
-        if column.name in filter_columns:
+        if column.name in board.filter_columns:
             cards = column.list_cards()
             for card in cards:
                 print('Statistics for the card ' + card.name + '\n')
@@ -83,15 +106,18 @@ def showing_recommendations(all_boards, index_board, experience_columns, filter_
                     print('No one has implement this before :O')
                 print('')
 
+
 #This will show you a recommended card for a given member id within the limit based on your experience working with other card
-def recommend_a_card_for_a_member(all_boards, index_board, experience_columns, filter_columns, member_id, limit):
-    my_board = all_boards[index_board]
+def recommend_a_card_for_a_member(board):
+    my_board = board.all_boards[board.index_board]
     dict = {}
     all_columns = my_board.list_lists()
-    max_experience = 0
-    save_card = {}
+    max_experience_estimated = 0
+    save_card_estimated = {}
+    max_experience_not_estimated = 0
+    save_card_not_estimated = {}
     for column in all_columns:
-        if column.name in experience_columns:
+        if column.name in board.experience_columns:
             cards = column.list_cards()
             for card in cards:
                 points = get_points_of_a_card(card.name, '[', ']')
@@ -106,11 +132,11 @@ def recommend_a_card_for_a_member(all_boards, index_board, experience_columns, f
                             dict[label.name] = {}
                             dict[label.name][id_member] = points
     for column in all_columns:
-        if column.name in filter_columns:
+        if column.name in board.filter_columns:
             cards = column.list_cards()
             for card in cards:
                 estimated_points = get_points_of_a_card(card.name, '(', ')')
-                if(estimated_points <= limit):
+                if(estimated_points <= board.sprint_limit):
                     sum_maxi = 0
                     all_sums = {}
                     for label in card._labels:
@@ -124,19 +150,26 @@ def recommend_a_card_for_a_member(all_boards, index_board, experience_columns, f
                         sum_maxi += maxi
                     if sum_maxi > 0:
                         for id_member in all_sums:
-                            if id_member == member_id:
+                            if id_member == board.member_id:
                                 actual_experience = all_sums[id_member] * 100 / sum_maxi
-                                if (max_experience < actual_experience):
-                                    max_experience = actual_experience
-                                    save_card[0] = card
-    if len(save_card) > 0:
-        print('We recommend you this card ' + save_card[0].name + ' url = ' + save_card[0].url + ' your percentage recommendation is about ' + str(max_experience) + ' %')
+                                if(estimated_points == 0):
+                                    if (max_experience_not_estimated < actual_experience):
+                                        max_experience_not_estimated = actual_experience
+                                        save_card_not_estimated[0] = card
+                                else:
+                                    if (max_experience_estimated < actual_experience):
+                                        max_experience_estimated = actual_experience
+                                        save_card_estimated[0] = card
+    if len(save_card_estimated) > 0:
+        print('We recommend you this card ' + save_card_estimated[0].name + ' url = ' + save_card_estimated[0].url + ' your percentage recommendation is about ' + str(max_experience_estimated) + ' %')
+    elif len(save_card_not_estimated) > 0:
+        print('This card is not estimated but we recommend you this card ' + save_card_not_estimated[0].name + ' url = ' + save_card_not_estimated[0].url + ' your percentage recommendation is about ' + str(max_experience_not_estimated) + ' %')
     else:
         print('We have nothing to recommend you :(, please contact with your leader to see what`s next!')
 
 
-def respect_column_rules(all_boards, index_board):
-    my_board = all_boards[index_board]
+def respect_column_rules(board):
+    my_board = board.all_boards[board.index_board]
     all_columns = my_board.list_lists()
     for column in all_columns:
         limit_cards = get_points_of_a_card(column.name, '{', '}')
@@ -147,16 +180,12 @@ def respect_column_rules(all_boards, index_board):
                 print('You have exceeded the number of cards on the column of ' + column.name + ' you have right now ' + str(number_of_cards_in_column) + ' cards when the limit = ' + str(limit_cards))
 
 
-def show_columns_in_board(all_boards, index_board):
-    print('To do')
-
-
-def get_points_of_column(all_boards, index_board, filter_column):
-    my_board = all_boards[index_board]
+def get_points_of_column(board):
+    my_board = board.all_boards[board.index_board]
     all_columns = my_board.list_lists()
     ret = 0
     for column in all_columns:
-        if column.name == filter_column:
+        if column.name == board.filter_columns:
             cards = column.list_cards()
             for card in cards:
                 ret += get_points_of_a_card(card.name, '[', ']')
@@ -164,16 +193,16 @@ def get_points_of_column(all_boards, index_board, filter_column):
     return ret
 
 
-def get_points_of_column_of_member(all_boards, index_board, filter_column, id_member):
-    my_board = all_boards[index_board]
+def get_points_of_column_of_member(board, column_name):
+    my_board = board.all_boards[board.index_board]
     all_columns = my_board.list_lists()
     ret = 0
     for column in all_columns:
-        if column.name == filter_column:
+        if column.name == column_name:
             cards = column.list_cards()
             for card in cards:
                 for id_members in card.idMembers:
-                    if(id_members == id_member):
+                    if(id_members == board.member_id):
                         ret += get_points_of_a_card(card.name, '[', ']')
                         break
             break
@@ -187,14 +216,14 @@ def get_memberid(member_name):
         return id_member
 
 
-def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, end_date):
+def predict_sprint_points(board):
     ret = 0
-    id_member = get_memberid(member_name)
-    my_board = all_boards[index_board]
+    id_member = board.member_id
+    my_board = board.all_boards[board.index_board]
     all_columns = my_board.list_lists()
     dict = {}
     for column in all_columns:
-        index = column.name.find(sprint_prefix)
+        index = column.name.find(board.sprint_prefix)
         column_len = len(column.name)
         if index != -1:
             index += 1
@@ -203,12 +232,12 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, e
                 sprint_number *= 10
                 sprint_number += (ord(column.name[index]) - 48)
                 index += 1
-            sprint_points = get_points_of_column_of_member(all_boards, index_board, column.name, id_member)
+            sprint_points = get_points_of_column_of_member(board, column.name)
             if sprint_points > 0:
                 dict[sprint_number] = sprint_points
     X = []
     Y = []
-    remaining_days = (end_date.date() - datetime.datetime.today().date()).days
+    remaining_days = (board.end_date_of_sprint.date() - datetime.datetime.today().date()).days
     for key in dict:
         X.append(key)
         Y.append(dict[key])
@@ -229,8 +258,8 @@ def predict_sprint_points(all_boards, index_board, sprint_prefix, member_name, e
     return ret
 
 
-def rdebug(all_boards, index_board):
-    my_board = all_boards[index_board]
+def rdebug(board):
+    my_board = board.all_boards[board.index_board]
     a = my_board.get_members()
     print(a)
     for member in a:
@@ -241,15 +270,34 @@ def rdebug(all_boards, index_board):
         print(member.id)
 
 
+working_board = board(all_boards = client.list_boards(),
+                      index_board = 0,
+                      filter_columns = ['Sprint Backlog'],
+                      limit = 7)
 
-#card_not_taken(client.list_boards(), 0, ['Sprint Backlog'], 7)
+#card_not_taken(working_board)
 
-#showing_recommendations(client.list_boards() , 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'])
+working_board.experience_columns = ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done']
 
-#sprint_limit = predict_sprint_points(client.list_boards(), 0, 'S', 'Arturo Hinojosa Reyes', datetime.datetime(2019, 7, 13))
-#recommend_a_card_for_a_member(client.list_boards(), 0, ['Done', 'S2', 'S1', 'Card hasta el 7 JUN', 'Docs Done'], ['Sprint Backlog', 'Pre Planning'], get_memberid('Arturo Hinojosa Reyes'), sprint_limit)
+working_board.filter_columns = ['Sprint Backlog', 'Pre Planning']
 
-#respect_column_rules(client.list_boards(), 0)
+#showing_recommendations(working_board)
+
+working_board.sprint_prefix = 'S'
+
+working_board.member_fullname = 'Arturo Hinojosa Reyes'
+
+working_board.end_date_of_sprint = datetime.datetime(2019, 7, 15)
+
+working_board.member_id = get_memberid(working_board.member_fullname)
+
+#sprint_limit = predict_sprint_points(working_board)
+
+#working_board.sprint_limit = sprint_limit
+
+#recommend_a_card_for_a_member(working_board)
+
+respect_column_rules(working_board)
 
 #rdebug(client.list_boards(), 0)
 
